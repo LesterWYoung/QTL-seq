@@ -188,6 +188,10 @@ class QTLseq(object):
         self.qtlplot()
 
 def main():
+    #adding a line that prints the command used to call qtlseq to the log file.
+    #this is useful if you're trying to debug, or are doing multiple qtlseq analyses
+
+    print(time_stamp(), 'command used to call qtlseq was:', cmd)
     print(time_stamp(), 'start to run QTL-seq.', flush=True)
     QTLseq(args).run()
     print(time_stamp(), 'QTL-seq successfully finished.\n', flush=True)
