@@ -26,12 +26,14 @@ Bulked segregant analysis, as implemented in  QTL-seq (Takagi et al., 2013), is 
 
 ## Installation
 ### Dependencies
-#### Softwares
+#### Software required
 - [BWA](http://bio-bwa.sourceforge.net/)
 - [SAMtools](http://samtools.sourceforge.net/)
 - [BCFtools](http://samtools.github.io/bcftools/)
-- [SnpEff](http://snpeff.sourceforge.net/)
 - [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
+- [SnpEff](http://snpeff.sourceforge.net/) (optional)
+
+The above software is included if bioconda is used to install QTL-seq. If you manually install QTL-seq the applications listed above will need to be installed and available
 
 #### Python libraries
 - matplotlib
@@ -45,25 +47,40 @@ You can install QTL-seq using [bioconda](https://bioconda.github.io/index.html).
 $ conda install -c bioconda qtlseq
 ```
 
-### Mannual Installation
-If you got a error during installation, you can install QTL-seq, manually.
+### Manual Installation
+If you got a error during installation, you can install QTL-seq, using git.
 ```
 $ git clone https://github.com/YuSugihara/QTL-seq.git
 $ cd QTL-seq
 $ pip install -e .
 ```
-Then you have to install other dependencies by yourself. We highly recommend you to install SnpEff and Trimmomatic using bioconda.
+Manual installation of QTL-seq requires other software dependencies (listed in Software (#Software)). We highly recommend you  install SnpEff and Trimmomatic using bioconda.
 ```
 $ conda install -c bioconda snpeff
 $ conda install -c bioconda triimomatic
 ```
-After installation, please check whether SnpEff and Trimmomatic work through the commands like below.
+After installation, please check whether SnpEff and Trimmomatic work, for example, using the commands below.
 ```
 $ snpEff --help
 $ trimmomatic --help
 ```
 
 ## Usage
+### File requirements
+To run QTL-seq the following data files are required:
+- a FASTA file containing your reference sequence e.g. myspecies_reference.fasta
+- FASTQ files containing forward and reverse reads from individuals with one extreme phenotype
+  e.g. resistant_bulk.1.fastq.gz and resistant_bulk.2.fastq.gz
+- FASTQ files containing forward and reverse reads from individuals with the other extreme phenotype
+  e.g. susceptible_bulk.1.fastq.gz and susceptible_bulk.2.fastq.gz
+  
+Alternatively, .bam files containing unaligned reads can be used instead of the FASTQ files
+  e.g. resistant_reads.bam and susceptible_reads.bam
+  
+The QTL-seq pipeline can optionally identify causative SNPs and INDELs using snpEff (called with the "-e" option). This option requires a snpEFF file for your species to be avaialble to snpEff
+
+### QTL-seq syntax
+
 ```
 $ qtlseq -h
 
@@ -75,47 +92,49 @@ QTL-seq version 2.0.7
 
 optional arguments:
   -h, --help         show this help message and exit
-  -r , --ref         Reference fasta.
+  -r , --ref         Reference fasta. [required]
   -p , --parent      fastq or bam of parent. If you specify
-                     fastq, please separate pairs by commma,
-                     e.g. -p fastq1,fastq2. You can use this
-                     optiion multiple times
+                     fastq, please separate forward and reverse 
+                     pairs by commma, e.g. -p fastq1,fastq2. 
+                     You can use this option multiple times. [required?]
   -b1 , --bulk1      fastq or bam of bulk 1. If you specify
-                     fastq, please separate pairs by commma,
-                     e.g. -b1 fastq1,fastq2. You can use this
-                     optiion multiple times
+                     fastq, please separate forward and reverse 
+                     pairs by commma, e.g. -b1 fastq1,fastq2. 
+                     You can use this option multiple times [required]
   -b2 , --bulk2      fastq or bam of bulk 2. If you specify
-                     fastq, please separate pairs by commma,
-                     e.g. -b2 fastq1,fastq2. You can use this
-                     optiion multiple times
-  -n1 , --N-bulk1    Number of individuals in bulk 1.
-  -n2 , --N-bulk2    Number of individuals in bulk 2.
+                     fastq, please separate forward and reverse 
+                     pairs by commma, e.g. -b2 fastq1,fastq2.
+                     You can use this option multiple times [required]
+  -n1 , --N-bulk1    Number of individuals in bulk 1. [required]
+  -n2 , --N-bulk2    Number of individuals in bulk 2. [required]
   -o , --out         Output directory. Specified name must not
-                     exist.
+                     exist and pipeline will quit if it is present. [required]
   -F , --filial      Filial generation. This parameter must be
-                     more than 1. [2]
-  -t , --threads     Number of threads. If you specify the number
-                     below one, then QTL-seq will use the threads
-                     as many as possible. [2]
+                     greater than 1. [2]
+  -t , --threads     Number of threads. If you specify a number
+                     below one then QTL-seq will use as many threads 
+                     as possible. [2]
   -w , --window      Window size (kb). [2000]
   -s , --step        Step size (kb). [100]
-  -D , --max-depth   Maximum depth of variants which will be used. [250]
+  -D , --max-depth   Maximum depth (number of reads) per variant (SNP or INDEL) 
+                     to be used. [250]
   -d , --min-depth   Minimum depth of variants which will be used. [8]
   -N , --N-rep       Number of replicates for simulation to make
                      null distribution. [5000]
   -T, --trim         Trim fastq using trimmomatic.
-  -a , --adapter     FASTA of adapter sequences. This will be used
-                     when you specify "-T" for trimming.
+  -a , --adapter     Path to FASTA file containing adapter sequences. Specifying 
+                     -a is optional and is only used if trimming the fastq files
+                     is required (that is, using "-T"). []
   --trim-params      Parameters for trimmomatic. Input parameters
-                     must be separated by comma with following
+                     must be separated by comma in the following
                      order: phred, ILLUMINACLIP, LEADING, TRAILING,
                      SLIDINGWINDOW, MINLEN. If you want to remove
-                     adapters of illumina, please specify FASTA of
-                     the adapter sequences with "--adapter". Specified
-                     name will be inserted into <ADAPTER_FASTA>. If you
-                     don't specify it, adapter trimming will be skipped.
+                     Illumina adapters, please specify a FASTA file containing
+                     the adapter sequences using "--adapter". The specified FASTA
+                     file will be inserted into <ADAPTER_FASTA>. If adapter filtering
+                     isn't specifed, adapter trimming will be skipped.
                      [33,<ADAPTER_FASTA>:2:30:10,20,20,4:15,75]
-  -e , --snpEff      Predict causal variant using SnpEff. Please
+  -e , --snpEff      Predict causative variants using SnpEff. Please
                      check available databases in SnpEff.
   --mem              Maximum memory per thread when bam sorted;
                      suffix K/M/G recognized. [1G]
@@ -126,7 +145,8 @@ optional arguments:
   -v, --version      show program's version number and exit
 ```
 
-QTL-seq can run from FASTQ (without or with trimming) and BAM. If you want to run QTL-seq from VCF, please use QTL-plot (example 5). Once you run QTL-seq, QTL-seq automatically complete the subprocesses.
+QTL-seq can use FASTQ (without or with trimming) and/or BAM files for the parental, bulk1 and bulk2 reads. Once you run QTL-seq, QTL-seq automatically completes the subprocesses. That is, QTL-seq will trim (optional using "-T"), align readfiles (using bwa), filter and call variants (samtools and bcftools), calculate snp-index and delta(snp-index) values and create plots showing these values.
+If you want to run QTL-seq using a VCF file previously created using the QTL-seq pipeline, please use QTL-plot (see example 5). 
 
 + [Example 1 : run QTL-seq from FASTQ without trimming](#Example-1--run-QTL-seq-from-FASTQ-without-trimming)
 + [Example 2 : run QTL-seq from FASTQ with trimming](#Example-2--run-QTL-seq-from-FASTQ-with-trimming)
@@ -136,7 +156,7 @@ QTL-seq can run from FASTQ (without or with trimming) and BAM. If you want to ru
 
 
 
-### Example 1 : run QTL-seq from FASTQ without trimming
+### Example 1 : run QTL-seq using FASTQ files without trimming
 ```
 $ qtlseq -r reference.fasta \
          -p parent.1.fastq,parent.2.fastq \
@@ -149,11 +169,11 @@ $ qtlseq -r reference.fasta \
 
 `-r` : reference fasta
 
-`-p` : FASTQs of parent. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-p` : FASTQs of parent. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
-`-b1` : FASTQs of bulk 1. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-b1` : FASTQs of bulk 1. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
-`-b2` : FASTQs of bulk 2. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-b2` : FASTQs of bulk 2. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
 `-n1` : number of individuals in bulk 1.
 
@@ -161,7 +181,7 @@ $ qtlseq -r reference.fasta \
 
 `-o` : name of output directory. Specified name cannot exist.
 
-### Example 2 : run QTL-seq from FASTQ with trimming
+### Example 2 : run QTL-seq using FASTQ files with trimming
 ```
 $ qtlseq -r reference.fasta \
          -p parent.1.fastq,parent.2.fastq \
@@ -175,11 +195,11 @@ $ qtlseq -r reference.fasta \
 
 `-r` : reference fasta
 
-`-p` : FASTQs of parent. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-p` : FASTQs of parent. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
-`-b1` : FASTQs of bulk 1. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-b1` : FASTQs of bulk 1. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
-`-b2` : FASTQs of bulk 1. Please input pair-end reads separated by comma. FASTQs can be gzipped.
+`-b2` : FASTQs of bulk 1. Please supply pair-end reads separated by a comma. FASTQs can be gzipped.
 
 `-n1` : number of individuals in bulk 1.
 
@@ -187,9 +207,9 @@ $ qtlseq -r reference.fasta \
 
 `-o` : name of output directory. Specified name cannot exist.
 
-`-T` : trim your reads using triimomatic.
+`-T` : trim reads using trimmomatic.
 
-### Example 3 : run QTL-seq from BAM
+### Example 3 : run QTL-seq using BAM files
 ```
 $ qtlseq -r reference.fasta \
          -p parent.bam \
@@ -214,7 +234,7 @@ $ qtlseq -r reference.fasta \
 
 `-o` : name of output directory. Specified name cannot exist.
 
-### Example 4 : run QTL-seq from multiple FASTQs and BAMs
+### Example 4 : run QTL-seq using multiple FASTQs and BAMs
 ```
 $ qtlseq -r reference.fasta \
          -p parent_1.1.fastq,parent_1.2.fastq \
@@ -230,7 +250,7 @@ $ qtlseq -r reference.fasta \
          -o example_dir
 ```
 
-QTL-seq can automatically merge multiple FASTQs and BAMs. Of course, you can merge FASTQs or BAMs using `cat` or `samtools merge` before input them to QTL-seq. If you specify `-p` multiple times, please make sure that those files include only 1 individual. On the other hand, `-b1` and `-b2` can include more than 1 individuals because those are bulked samples. QTL-seq can automatically classify FASTQs and BAMs from whether comma exits or not.
+QTL-seq can automatically merge multiple FASTQs and BAMs. Of course, you can manually merge FASTQs or BAMs using `cat` or `samtools merge` prior to using them in QTL-seq. If you specify `-p` multiple times, please make sure that the files are from only a single individual. On the other hand, `-b1` and `-b2` should include more than one individual because these are bulked samples. QTL-seq will assume that FASTQ files are present if a comma is present between the filenames. The pipeline will assume a BAM file is present if a comma is not present.
 
 ### Example 5 : run QTL-plot from VCF
 ```
@@ -252,32 +272,33 @@ optional arguments:
   -o , --out            Output directory. Specified name can exist.
   -F , --filial         Filial generation. This parameter must be
                         more than 1. [2]
-  -t , --threads        Number of threads. If you specify the number
-                        below one, then QTL-plot will use the threads
-                        as many as possible. [2]
+  -t , --threads        Number of threads. If you specify a number
+                        below one, then QTL-plot will use as many threads
+                        as possible. [2]
   -w , --window         Window size (kb). [2000]
   -s , --step           Step size (kb). [100]
-  -D , --max-depth      Maximum depth of variants which will be used. [250]
+  -D , --max-depth      Maximum depth (number of reads) per variant (SNP or INDEL) 
+                        to be used. [250]
   -d , --min-depth      Minimum depth of variants which will be used. [8]
   -N , --N-rep          Number of replicates for simulation to make
                         null distribution. [5000]
   -m , --min-SNPindex   Cutoff of minimum SNP-index for clear results. [0.3]
-  -S , --strand-bias    Filter spurious homo genotypes in cultivar using
+  -S , --strand-bias    Filter spurious homozygous genotypes in cultivar using
                         strand bias. If ADF (or ADR) is higher than this
-                        cutoff when ADR (or ADF) is 0, that SNP will be
+                        cutoff when ADR (or ADF) is 0, then the SNP will be
                         filtered out. If you want to supress this filtering,
                         please set this cutoff to 0. [7]
-  -e , --snpEff         Predict causal variant using SnpEff. Please
+  -e , --snpEff         Predict causative variants using SnpEff. Please
                         check available databases in SnpEff.
   --igv                 Output IGV format file to check results on IGV.
-  --indel               Plot SNP-index with INDEL.
-  --fig-width           Width allocated in chromosome figure. [7.5]
-  --fig-height          Height allocated in chromosome figure. [4.0]
-  --white-space         White space between figures. (This option
-                        only affect vertical direction.) [0.6]
+  --indel               Plot SNP-index with INDEL. Default is to plot SNPs only
+  --fig-width           Width of chromosome plots. [7.5]
+  --fig-height          Height of chromosome plots. [4.0]
+  --white-space         White space between plots. (This option
+                        only affect the vertical separation.) [0.6]
   --version             show program's version number and exit
 ```
-QTL-plot is included in QTL-seq. QTL-seq run QTL-plot after making VCF. Then, QTL-plot will work with default parameters. If you want to change some parameters, you can use VCF inside of `(OUT_DIR/30_vcf/QTL-seq.vcf.gz)` to retry plotting process like below.
+QTL-plot is included in QTL-seq. QTL-plot will automatically run after QTL-seq has generated a VCF file using the default parameters. If you want to generate plots using altered parameters, use the VCF file generated by QTL-seq `(OUT_DIR/30_vcf/QTL-seq.vcf.gz)` in QTL-plot. An example is shown below.
 
 ```
 $ qtlplot -v OUT_DIR/30_vcf/QTL-seq.vcf.gz \
@@ -288,15 +309,15 @@ $ qtlplot -v OUT_DIR/30_vcf/QTL-seq.vcf.gz \
           -s 100
 ```
 
-#### Use QTL-plot for VCF which was made by yourself
-In this case, please make sure that:
-1. Your VCF include AD format.
-2. Your VCF include three columns of parent, bulk1 and bulk2 in this order.
+#### QTL-plot using your own VCF file
+It is possible to to use QTL-plot using your own VCF file. In this case, please make sure that:
+1. Your VCF includes the AD field.
+2. Variants were called using mpileup and three BAM alignments, parent, bulk1 and bulk2, in this order.
 
-If you got a error, please try to run QTL-seq from FASTQ or BAM before asking in issues.
+If you get an error, please try to run QTL-seq from FASTQ or BAM before asking in issues.
 
 ## Outputs
-Inside of `OUT_DIR` is like below.
+An example of the QTL-seq output written to `OUT_DIR` is shown below.
 ```
 ├── 10_ref
 │  ├── IRGSP-1.0_genome.fasta
@@ -329,31 +350,31 @@ Inside of `OUT_DIR` is like below.
    ├── samtools.log
    └── tabix.log
 ```
-- If you run QTL-seq with trimming, you will get the directory of `00_fastq` which includes FASTQs after trimming.
-- You can check the results in `40_QTL-seq`.
+- If you run QTL-seq with trimming ("-T"), the trimmed FASTQ files will be placed in the `00_fastq` directory.
+- The final results for the pipeline are in `40_QTL-seq`. Column headings for the results are:
   + `snp_index.tsv` : columns in this order.
     - **CHROM** : chromosome name
     - **POSI** : position in chromosome
     - **VARIANT** : SNP or INDEL
     - **DEPTH 1** : depth of bulk 1
     - **DEPTH 2** : depth of bulk 2
-    - **p99** : 99% confidence interval of simulated delta SNP-index (absolute value)
-    - **p95** : 95% confidence interval of simulated delta SNP-index (absolute value)
-    - **SNP-index 1** : real SNP-index of bulk 1
-    - **SNP-index 2** : real SNP-index of bulk 2
+    - **p99** : 99% confidence interval for simulated delta SNP-index (absolute value)
+    - **p95** : 95% confidence interval for simulated delta SNP-index (absolute value)
+    - **SNP-index 1** : real SNP-index of variants in bulk 1
+    - **SNP-index 2** : real SNP-index of variants in bulk 2
     - **DELTA SNP-index** : real delta SNP-index (bulk2 - bulk1)
   + `sliding_window.tsv` : columns in this order.
     - **CHROM** : chromosome name
     - **POSI** : central position of window
-    - **MEAN p99** : mean of p99
-    - **MEAN p95** : mean of p95
-    - **MEAN SNP-index 1** : mean SNP-index of bulk 1 (absolute value)
-    - **MEAN SNP-index 2** : mean SNP-index of bulk 2 (absolute value)
+    - **MEAN p99** : mean 99% confidence interval for window
+    - **MEAN p95** : mean 95% confidence interval for window
+    - **MEAN SNP-index 1** : mean SNP-index of bulk 1 variants in window (absolute value)
+    - **MEAN SNP-index 2** : mean SNP-index of bulk 2 variants in window (absolute value)
     - **MEAN DELTA SNP-index** : mean delta SNP-index
-  + `QTL-seq_plot.png` : resulting plot (like below)
-    - **<span style="color: blue; ">BLUE dot</span>** : variant
+  + `QTL-seq_plot.png` : example plot shown below
+    - **<span style="color: blue; ">BLUE dots</span>** : delta(SNP-index) values and location for SNPs
     - **<span style="color: red; ">RED line</span>** : mean SNP-index
-    - **<span style="color: orange; ">ORANGE line</span>** : mean p99
-    - **<span style="color: green; ">GREEN line</span>** : mean p95
+    - **<span style="color: orange; ">ORANGE line</span>** : mean 99% confidence interval
+    - **<span style="color: green; ">GREEN line</span>** : mean 95% confidence interval
 
 <img src="https://user-images.githubusercontent.com/34593586/72580948-00e60500-3921-11ea-850f-dcf9a8d75e74.png" width=600>
