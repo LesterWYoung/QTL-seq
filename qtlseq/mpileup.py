@@ -116,6 +116,9 @@ class Mpileup(object):
                 bcftools call -vm \
                               -f GQ,GP \
                               -O u | \
+                bcftools norm   -m -any \
+                              -O u \
+                              -f ${4} | \
                 bcftools filter -i "INFO/MQ>={0}" \
                                 -O z \
                                 -o {5}/30_vcf/qtlseq.{3}.vcf.gz \
@@ -126,6 +129,13 @@ class Mpileup(object):
                                              chr_name,
                                              self.args.ref,
                                              self.out)
+
+       
+#inserted bcftools norm command. This helps correct the alignment of reads around an INDEL or mismatch
+#Hopefully I wrote it correctly!
+#the -m -any option splits multiallelic sites into a biallelic site. It does this for both SNPs and INDELs
+#the -O u option outputs the results in an uncompressed form
+#the -f {4} option specifies the reference FASTA file used (Hopefull the same as -f {4} in mpileup
 
         cmd2 = 'tabix -f \
                       -p vcf \
